@@ -20,8 +20,7 @@ import * as tf from '@tensorflow/tfjs';
 import {IMAGENET_CLASSES} from './imagenet_classes';
 
 // Where to load the model from.
-const MOBILENET_MODEL_TFHUB_URL =
-    'https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/classification/2'
+const MOBILENET_MODEL_TFHUB_URL = chrome.extension.getURL('model.json');
 // Size of the image expected by mobilenet.
 const IMAGE_SIZE = 224;
 // The minimum image size to consider classifying.  Below this limit the
@@ -70,18 +69,23 @@ class ImageClassifier {
     const startTime = performance.now();
     try {
       this.model =
-          await tf.loadGraphModel(MOBILENET_MODEL_TFHUB_URL, {fromTFHub: true});
+          await tf.loadGraphModel(MOBILENET_MODEL_TFHUB_URL);
       // Warms up the model by causing intermediate tensor values
       // to be built and pushed to GPU.
-      tf.tidy(() => {
-        this.model.predict(tf.zeros([1, IMAGE_SIZE, IMAGE_SIZE, 3]));
-      });
+
       const totalTime = Math.floor(performance.now() - startTime);
       console.log(`Model loaded and initialized in ${totalTime} ms...`);
     } catch {
       console.error(
           `Unable to load model from URL: ${MOBILENET_MODEL_TFHUB_URL}`);
     }
+    const masks = tf.tensor([[1, 1, 1, 1, 1, 1]]);
+    const token_ids = tf.tensor([[1629, 4014, 11328, 100, 42002, 293, 879, 36064, 6, 19530, 4086, 8310]]);
+    const offsets = tf.tensor([[0, 3, 4, 6, 9, 11]]);
+
+    tf.tidy(() => {
+      this.model.predict({masks, token_ids, offsets});
+    });
   }
 
   /**
